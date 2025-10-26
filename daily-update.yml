@@ -1,27 +1,43 @@
-name: Daily Commit
+name: DevSync Daily Repository Update
 
 on:
   schedule:
-    - cron: '15 4 * * *'
-  workflow_dispatch:
+    # Runs at 05:30 UTC every day.
+    # We must use specific hours/minutes as requested.
+    - cron: '30 05 * * *'
+  workflow_dispatch: # Allows manual triggering for testing and verification
 
 jobs:
-  commit:
+  daily_commit:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Essential for committing and pushing changes
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}  # ✅ allows push access
-
-      - name: Commit step - 24f1001642@ds.study.iitm.ac.in
+        uses: actions/checkout@v4
+        
+      # Requirement: Step name must include the specified email.
+      - name: 24f1001642@ds.study.iitm.ac.in - Generate Daily Update File
         run: |
-          echo "TDSFU Daily run: $(date -u) TDSFU" >> daily-log.txt
-
-      - name: Git Commit and Push
+          # Create a simple file with the current timestamp to force a change
+          # and ensure a commit can be made in every run.
+          DATE_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          echo "Last automated update: $DATE_TIME" > DAILY_UPDATE.txt
+          
+      - name: Commit and Push Daily Update
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add daily-log.txt
-          git commit -m "Auto commit at $(date -u)" || echo "No changes to commit"
+          # Configure git with a dedicated bot user for clear attribution
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Stage the new/updated file
+          git add DAILY_UPDATE.txt
+          
+          # Commit the change. The '|| exit 0' ensures the step succeeds even if 
+          # there are no changes to commit (e.g., if the timestamp didn't change enough, 
+          # though creating a new timestamp file should prevent this).
+          git commit -m "DevSync: Automated daily repository status update" || exit 0
+          
+          # Push the commit to the main branch
           git push
